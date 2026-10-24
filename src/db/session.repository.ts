@@ -195,6 +195,32 @@ export class SessionRepository {
       },
     });
   }
+
+  async getTelemetryOverview() {
+    const [totalSessions, completedSessions, tokenTotals, activeDocuments] = await Promise.all([
+      prisma.researchSession.count(),
+      prisma.researchSession.count({ where: { status: SessionStatus.COMPLETED } }),
+      prisma.tokenUsageLog.aggregate({
+        _sum: {
+          totalTokens: true,
+          promptTokens: true,
+          completionTokens: true,
+          estimatedCostUsd: true,
+        },
+      }),
+      prisma.knowledgeDocument.count(),
+    ]);
+
+    return {
+      totalSessions,
+      completedSessions,
+      totalTokens: tokenTotals._sum.totalTokens ?? 0,
+      promptTokens: tokenTotals._sum.promptTokens ?? 0,
+      completionTokens: tokenTotals._sum.completionTokens ?? 0,
+      estimatedCostUsd: tokenTotals._sum.estimatedCostUsd ?? 0,
+      activeDocuments,
+    };
+  }
 }
 
 export const sessionRepository = new SessionRepository();

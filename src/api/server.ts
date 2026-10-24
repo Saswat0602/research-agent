@@ -3,6 +3,13 @@ import { apiRouter } from "./routes.js";
 import { getAppConfig } from "../config/env.js";
 import { AppError } from "../core/errors.js";
 
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const publicDir = path.resolve(__dirname, "../../public");
+
 export function createServer() {
   const app = express();
 
@@ -19,8 +26,10 @@ export function createServer() {
     next();
   });
 
+  // Serve static UI frontend
+  app.use(express.static(publicDir));
   app.use("/api/v1", apiRouter);
-  app.use("/", apiRouter);
+  app.use(apiRouter);
 
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error("API error:", err);

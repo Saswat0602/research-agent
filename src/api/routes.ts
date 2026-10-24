@@ -24,6 +24,28 @@ apiRouter.get("/health", (_req: Request, res: Response) => {
   });
 });
 
+import { circuitBreakerRegistry } from "../core/resilience.js";
+
+apiRouter.get("/telemetry/circuit-breakers", (_req: Request, res: Response) => {
+  res.json({
+    breakers: circuitBreakerRegistry.getAllMetrics(),
+  });
+});
+
+apiRouter.post("/telemetry/circuit-breakers/reset", (_req: Request, res: Response) => {
+  circuitBreakerRegistry.resetAll();
+  res.json({ success: true, message: "All circuit breakers reset to CLOSED" });
+});
+
+apiRouter.get("/telemetry/overview", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const overview = await sessionRepository.getTelemetryOverview();
+    res.json({ success: true, telemetry: overview });
+  } catch (err) {
+    next(err);
+  }
+});
+
 import { promptRegistry } from "../prompts/registry.js";
 
 apiRouter.get("/models", (_req: Request, res: Response) => {
@@ -103,10 +125,12 @@ apiRouter.post("/research", async (req: Request, res: Response, next: NextFuncti
   }
 });
 
-apiRouter.post("/research/stream", async (req: Request, res: Response) => {
-  const { topic, maxIterations } = req.body as { topic?: string; maxIterations?: number };
-  if (!topic || typeof topic !== "string") {
-    res.status(400).json({ error: "Missing or invalid 'topic' in request body" });
+const handleResearchStream = async (req: Request, res: Response) => {
+  const topic = (req.method === "POST" ? req.body?.topic : req.query?.topic) as string | undefined;
+  const maxIterations = Number(req.method === "POST" ? req.body?.maxIterations : req.query?.maxIterations) || 3;
+
+  if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
+    res.status(400).json({ error: "Missing or invalid 'topic'" });
     return;
   }
 
@@ -119,22 +143,25 @@ apiRouter.post("/research/stream", async (req: Request, res: Response) => {
   };
 
   try {
-    sendEvent("start", { topic, maxIterations: maxIterations ?? 3 });
+    sendEvent("status", { step: "Starting research workflow", details: { topic, maxIterations } });
 
     const result = await researchService.conductResearch(topic, {
       maxIterations,
       onProgress: (step, details) => {
-        sendEvent("progress", { step, details });
+        sendEvent("status", { step, details });
       },
     });
 
-    sendEvent("complete", result);
+    sendEvent("completed", result);
     res.end();
   } catch (err) {
     sendEvent("error", { message: err instanceof Error ? err.message : String(err) });
     res.end();
   }
-});
+};
+
+apiRouter.get("/research/stream", handleResearchStream);
+apiRouter.post("/research/stream", handleResearchStream);
 
 apiRouter.get("/sessions", async (_req: Request, res: Response, next: NextFunction) => {
   try {
@@ -228,6 +255,16 @@ apiRouter.get("/knowledge", async (_req: Request, res: Response, next: NextFunct
   try {
     const documents = await knowledgeRetriever.listDocuments();
     res.json({ success: true, count: documents.length, documents });
+  } catch (error) {
+    next(error);
+  }
+});
+
+apiRouter.get("/knowledge/search", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const q = String(req.query.q || "");
+    const results = await knowledgeRetriever.queryPrivateKnowledge(q, 5);
+    res.json({ success: true, count: results.length, results });
   } catch (error) {
     next(error);
   }

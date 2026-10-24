@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>REVIEWSAGE // Autonomous AI Research Agent & Graph Orchestrator</title>
+  <meta name="description" content="Production-ready multi-agent research platform powered by LangGraph, Google Gemini, Ollama, and deterministic citation verification.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="dark-theme">
+  <!-- Top Global Navigation Bar -->
+  <header class="app-header" id="app-header">
+    <div class="header-left">
+      <div class="brand-logo" id="brand-logo">
+        <div class="logo-orb"></div>
+        <span class="brand-name">REVIEWSAGE<span class="brand-accent">.AI</span></span>
+        <span class="badge badge-enterprise">ENTERPRISE GRAPH</span>
+      </div>
+    </div>
+    
+    <!-- Real-time Status Badges -->
+    <div class="header-center" id="header-system-status">
+      <div class="status-pill status-online" id="status-postgres">
+        <span class="status-dot"></span> PostgreSQL Checkpoints
+      </div>
+      <div class="status-pill status-online" id="status-redis">
+        <span class="status-dot"></span> Redis Telemetry
+      </div>
+      <div class="status-pill" id="status-model-badge">
+        <span class="model-tag" id="active-model-display">Gemini 3.5 Flash</span>
+      </div>
+      <div class="status-pill" id="status-guardrail-badge">
+        <span class="shield-icon">🛡️</span> Non-LLM Verifier Active
+      </div>
+    </div>
+
+    <div class="header-right">
+      <div class="telemetry-compact" id="header-telemetry-compact">
+        <span class="telemetry-label">Session Tokens:</span>
+        <span class="telemetry-value" id="header-tokens-count">0</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" id="btn-refresh-health" title="Refresh Service Status">
+        🔄 Refresh
+      </button>
+    </div>
+  </header>
+
+  <!-- Navigation Tab Bar -->
+  <nav class="nav-tabs-bar" id="main-nav-tabs">
+    <button class="nav-tab active" data-tab="tab-research" id="tab-btn-research">
+      <span class="tab-icon">⚡</span> Autonomous Research
+    </button>
+    <button class="nav-tab" data-tab="tab-rag" id="tab-btn-rag">
+      <span class="tab-icon">📚</span> Private Knowledge (RAG)
+    </button>
+    <button class="nav-tab" data-tab="tab-telemetry" id="tab-btn-telemetry">
+      <span class="tab-icon">📊</span> Telemetry & Circuit Breakers
+    </button>
+    <button class="nav-tab" data-tab="tab-sessions" id="tab-btn-sessions">
+      <span class="tab-icon">🕒</span> Checkpoints & History
+    </button>
+    <button class="nav-tab" data-tab="tab-prompts" id="tab-btn-prompts">
+      <span class="tab-icon">✍️</span> Prompt Registry
+    </button>
+  </nav>
+
+  <!-- Main Content Container -->
+  <main class="app-main-content">
+    
+    <!-- TAB 1: RESEARCH STUDIO -->
+    <section class="tab-pane active" id="tab-research">
+      <!-- Input Command Deck -->
+      <div class="card glass-panel command-deck" id="command-deck-card">
+        <div class="deck-header">
+          <h1 class="deck-title">Autonomous Deep Research Mission Control</h1>
+          <p class="deck-subtitle">Formulate an evidence-grounded research inquiry. Multi-agent state loops investigate web sources, query internal knowledge, and deterministically verify claims.</p>
+        </div>
+
+        <form id="form-research-mission" class="mission-form">
+          <div class="form-group-main">
+            <label for="input-topic" class="form-label">Research Objective / Hypothesis</label>
+            <div class="input-with-button">
+              <textarea 
+                id="input-topic" 
+                class="input-textarea" 
+                rows="2" 
+                placeholder="e.g. Research latest developments in AI agents, LangGraph state persistence, and Google ADK JS..."
+                required
+              ></textarea>
+              <button type="submit" class="btn btn-primary btn-launch" id="btn-start-research">
+                <span class="btn-text">Launch Investigation</span>
+                <span class="btn-glow"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Configuration Controls -->
+          <div class="form-controls-row">
+            <div class="control-col">
+              <label for="select-provider" class="control-label">Model Provider</label>
+              <select id="select-provider" class="select-dropdown">
+                <option value="gemini" selected>Google Gemini (gemini-3.5-flash-lite)</option>
+                <option value="ollama">Local Ollama (Qwen3 8B GPU)</option>
+                <option value="openai">OpenAI (GPT-4o Mini)</option>
+                <option value="claude">Anthropic Claude (3.5 Sonnet)</option>
+                <option value="openrouter">OpenRouter (Unified)</option>
+              </select>
+            </div>
+
+            <div class="control-col">
+              <label for="input-max-loops" class="control-label">Max Iteration Loops</label>
+              <input type="number" id="input-max-loops" class="input-number" min="1" max="5" value="3">
+            </div>
+
+            <div class="control-col toggle-col">
+              <label class="control-label">Private RAG Knowledge</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="toggle-private-kb" checked>
+                <span class="toggle-slider"></span>
+                <span class="toggle-text">Include Internal KB</span>
+              </label>
+            </div>
+
+            <div class="control-col topic-suggestions">
+              <span class="suggest-label">Quick Hypotheses:</span>
+              <div class="pills-container" id="quick-topic-pills">
+                <button type="button" class="pill-btn" data-topic="State of autonomous AI agents and Google ADK JS in 2026">Google ADK JS</button>
+                <button type="button" class="pill-btn" data-topic="LangGraph state checkpoints vs memory-only orchestration">LangGraph Persistence</button>
+                <button type="button" class="pill-btn" data-topic="Deterministic citation verification and hallucination defenses in RAG">RAG Guardrails</button>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Real-time Agent Graph Visualizer -->
+      <div class="card glass-panel graph-pipeline-card" id="graph-pipeline-card">
+        <div class="pipeline-header">
+          <span class="pipeline-title">Orchestration Graph State Machine</span>
+          <div class="pipeline-meta">
+            <span class="iteration-badge" id="display-iteration-badge">Iteration: Standby</span>
+            <span class="status-indicator-badge" id="display-status-badge">Idle</span>
+          </div>
+        </div>
+
+        <div class="pipeline-nodes-wrapper" id="pipeline-nodes">
+          <div class="node-box" id="node-planner">
+            <div class="node-icon">🧠</div>
+            <div class="node-name">Planner Node</div>
+            <div class="node-sub" id="sub-planner">Hypothesis & Queries</div>
+            <div class="node-status-dot"></div>
+          </div>
+
+          <div class="node-connector" id="conn-1"></div>
+
+          <div class="node-box" id="node-searcher">
+            <div class="node-icon">🔎</div>
+            <div class="node-name">Searcher Node</div>
+            <div class="node-sub" id="sub-searcher">Web + Private KB</div>
+            <div class="node-status-dot"></div>
+          </div>
+
+          <div class="node-connector" id="conn-2"></div>
+
+          <div class="node-box" id="node-reviewer">
+            <div class="node-icon">⚖️</div>
+            <div class="node-name">Reviewer Node</div>
+            <div class="node-sub" id="sub-reviewer">Evidence Sufficiency</div>
+            <div class="node-status-dot"></div>
+          </div>
+
+          <div class="node-connector" id="conn-3"></div>
+
+          <div class="node-box" id="node-verifier">
+            <div class="node-icon">🛡️</div>
+            <div class="node-name">Citation Gate</div>
+            <div class="node-sub" id="sub-verifier">Deterministic Verifier</div>
+            <div class="node-status-dot"></div>
+          </div>
+
+          <div class="node-connector" id="conn-4"></div>
+
+          <div class="node-box" id="node-reporter">
+            <div class="node-icon">📄</div>
+            <div class="node-name">Reporter Node</div>
+            <div class="node-sub" id="sub-reporter">Synthesis & Citations</div>
+            <div class="node-status-dot"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Execution Console and Final Synthesis Workspace -->
+      <div class="workspace-grid" id="workspace-grid">
+        <!-- Left Column: Live Terminal Stream & Evidence Log -->
+        <div class="workspace-col workspace-terminal-col">
+          <div class="card glass-panel terminal-card">
+            <div class="card-bar">
+              <span class="terminal-title">Telemetry & Event Log Stream</span>
+              <button class="btn btn-xs btn-ghost" id="btn-clear-logs">Clear</button>
+            </div>
+            <div class="terminal-body" id="live-event-stream">
+              <div class="log-line log-system">[SYSTEM READY] Autonomous Agent Orchestrator online. Awaiting mission parameters.</div>
+            </div>
+          </div>
+
+          <!-- Collected Evidence Deck -->
+          <div class="card glass-panel evidence-deck-card">
+            <div class="card-bar">
+              <span class="terminal-title">Collected Evidence Sources (<span id="evidence-count">0</span>)</span>
+            </div>
+            <div class="evidence-list" id="evidence-card-list">
+              <div class="empty-state-small" id="evidence-empty-hint">No evidence gathered yet. Launch an investigation to collect sources.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Final Verified Research Report -->
+        <div class="workspace-col workspace-report-col">
+          <div class="card glass-panel report-card" id="report-card-view">
+            <div class="card-bar">
+              <div class="report-meta-left">
+                <span class="report-heading">Verified Research Report</span>
+                <span class="badge badge-success hidden" id="badge-verified-claims">0/0 Claims Grounded</span>
+              </div>
+              <div class="report-actions" id="report-actions-bar">
+                <button class="btn btn-sm btn-secondary" id="btn-copy-markdown" disabled>
+                  📋 Copy Markdown
+                </button>
+                <button class="btn btn-sm btn-secondary" id="btn-export-json" disabled>
+                  💾 Export JSON
+                </button>
+              </div>
+            </div>
+
+            <!-- Report Content Viewport -->
+            <div class="report-viewport" id="report-viewport">
+              <div class="empty-report-state" id="report-empty-state">
+                <div class="empty-icon">🔬</div>
+                <h3>No Active Report</h3>
+                <p>Enter a research objective above and press <strong>Launch Investigation</strong>. The agent will execute cyclical LangGraph loops and compile verified citations here.</p>
+              </div>
+
+              <!-- Report Container (Rendered when completed) -->
+              <div class="rendered-report hidden" id="rendered-report-content">
+                <div class="report-hero">
+                  <h2 class="report-topic" id="rep-topic"></h2>
+                  <div class="report-stats-grid">
+                    <div class="stat-box">
+                      <span class="stat-num" id="rep-loops">0</span>
+                      <span class="stat-name">Loops Used</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-num" id="rep-sources-count">0</span>
+                      <span class="stat-name">Sources Cited</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-num" id="rep-claims-count">0</span>
+                      <span class="stat-name">Verified Claims</span>
+                    </div>
+                    <div class="stat-box">
+                      <span class="stat-num" id="rep-session-id">-</span>
+                      <span class="stat-name">Session Key</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="report-section">
+                  <h3 class="section-title">Executive Summary</h3>
+                  <div class="section-body prose" id="rep-summary"></div>
+                </div>
+
+                <div class="report-section">
+                  <h3 class="section-title">Key Findings & Verified Sourced Evidence</h3>
+                  <div class="findings-grid" id="rep-findings-container"></div>
+                </div>
+
+                <div class="report-section">
+                  <h3 class="section-title">Referenced Sources & Internal Documents</h3>
+                  <ul class="sources-list" id="rep-sources-list"></ul>
+                </div>
+
+                <div class="report-section">
+                  <h3 class="section-title">Synthesis Conclusion</h3>
+                  <div class="section-body prose" id="rep-conclusion"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: PRIVATE KNOWLEDGE BASE (RAG) -->
+    <section class="tab-pane hidden" id="tab-rag">
+      <div class="rag-layout">
+        <!-- Ingestion Form -->
+        <div class="card glass-panel rag-ingest-card">
+          <h2>Ingest Internal Document</h2>
+          <p class="section-desc">Add private company knowledge, architectures, and research notes. Content is automatically split into overlapping chunks and retrieved with relevance scoring.</p>
+
+          <form id="form-rag-ingest">
+            <div class="form-group">
+              <label for="rag-doc-title">Document Title</label>
+              <input type="text" id="rag-doc-title" class="input-text" placeholder="e.g. Enterprise Security Policy & SSRF Standards" required>
+            </div>
+
+            <div class="form-group">
+              <label for="rag-doc-url">Source URL or URI (Optional)</label>
+              <input type="text" id="rag-doc-url" class="input-text" placeholder="e.g. internal://docs/security-v2">
+            </div>
+
+            <div class="form-group">
+              <label for="rag-doc-tags">Tags (Comma-separated)</label>
+              <input type="text" id="rag-doc-tags" class="input-text" placeholder="security, architecture, ssrf, guardrails">
+            </div>
+
+            <div class="form-group">
+              <label for="rag-doc-content">Document Content (Markdown or Plaintext)</label>
+              <textarea id="rag-doc-content" class="input-textarea" rows="8" placeholder="Paste internal technical documentation, proprietary notes, or specifications here..." required></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary" id="btn-submit-rag-doc">
+              📥 Ingest & Index Document
+            </button>
+          </form>
+        </div>
+
+        <!-- Ingested Documents List & Search Probe -->
+        <div class="card glass-panel rag-list-card">
+          <div class="card-bar">
+            <h2>Indexed Knowledge Documents</h2>
+            <button class="btn btn-sm btn-secondary" id="btn-reload-docs">🔄 Refresh List</button>
+          </div>
+
+          <div class="search-probe-bar">
+            <input type="text" id="input-rag-search-probe" class="input-text" placeholder="Test RAG search query...">
+            <button class="btn btn-secondary" id="btn-test-rag-search">Search KB</button>
+          </div>
+
+          <div class="docs-table-wrapper">
+            <table class="data-table" id="table-kb-documents">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Source</th>
+                  <th>Tags</th>
+                  <th>Indexed Date</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-kb-documents">
+                <tr><td colspan="4" class="table-loading">Loading documents...</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="search-results-viewport hidden" id="rag-probe-results">
+            <h3>RAG Match Chunks:</h3>
+            <div id="rag-probe-cards"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TELEMETRY & CIRCUIT BREAKERS -->
+    <section class="tab-pane hidden" id="tab-telemetry">
+      <div class="telemetry-deck">
+        <div class="telemetry-summary-grid">
+          <div class="card glass-panel metric-card">
+            <span class="metric-title">Total Sessions</span>
+            <span class="metric-value" id="tel-total-sessions">0</span>
+          </div>
+          <div class="card glass-panel metric-card">
+            <span class="metric-title">Completed Investigations</span>
+            <span class="metric-value" id="tel-completed-sessions">0</span>
+          </div>
+          <div class="card glass-panel metric-card">
+            <span class="metric-title">Cumulative Tokens Processed</span>
+            <span class="metric-value" id="tel-total-tokens">0</span>
+          </div>
+          <div class="card glass-panel metric-card">
+            <span class="metric-title">Estimated Cost (USD)</span>
+            <span class="metric-value" id="tel-total-cost">$0.0000</span>
+          </div>
+        </div>
+
+        <!-- Circuit Breakers Grid -->
+        <div class="card glass-panel circuit-breakers-card">
+          <div class="card-bar">
+            <div>
+              <h2>Resilience Circuit Breakers</h2>
+              <p class="section-desc">Active failure detectors preventing cascade failures on downstream LLM providers and search endpoints.</p>
+            </div>
+            <button class="btn btn-sm btn-secondary" id="btn-reset-all-breakers">
+              🛡️ Reset All Breakers
+            </button>
+          </div>
+
+          <div class="breakers-grid" id="breakers-container">
+            <div class="loading-hint">Loading circuit breaker states...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: CHECKPOINTS & HISTORY -->
+    <section class="tab-pane hidden" id="tab-sessions">
+      <div class="card glass-panel sessions-history-card">
+        <div class="card-bar">
+          <div>
+            <h2>Research Sessions & PostgreSQL Checkpoints</h2>
+            <p class="section-desc">Audit trail of past investigations with durable graph checkpoints.</p>
+          </div>
+          <button class="btn btn-sm btn-secondary" id="btn-refresh-sessions">🔄 Refresh</button>
+        </div>
+
+        <div class="sessions-table-wrapper">
+          <table class="data-table" id="table-sessions">
+            <thead>
+              <tr>
+                <th>Topic</th>
+                <th>Status</th>
+                <th>Provider & Model</th>
+                <th>Loops</th>
+                <th>Evidence Items</th>
+                <th>Timestamp</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-sessions">
+              <tr><td colspan="7" class="table-loading">Loading sessions...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: PROMPT REGISTRY -->
+    <section class="tab-pane hidden" id="tab-prompts">
+      <div class="card glass-panel prompt-studio-card">
+        <div class="card-bar">
+          <div>
+            <h2>Dynamic Prompt Engineering Studio</h2>
+            <p class="section-desc">Customize persona instructions, tone, and verification criteria without restarting the service.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-save-prompts">💾 Save Custom Prompts</button>
+        </div>
+
+        <div class="prompts-grid">
+          <div class="prompt-box">
+            <label for="prompt-planner-persona" class="prompt-label">Planner Persona & Objective</label>
+            <textarea id="prompt-planner-persona" class="input-textarea" rows="4"></textarea>
+          </div>
+
+          <div class="prompt-box">
+            <label for="prompt-reviewer-persona" class="prompt-label">Reviewer Evaluation Criteria</label>
+            <textarea id="prompt-reviewer-persona" class="input-textarea" rows="4"></textarea>
+          </div>
+
+          <div class="prompt-box">
+            <label for="prompt-reporter-persona" class="prompt-label">Reporter Synthesis & Citation Instructions</label>
+            <textarea id="prompt-reporter-persona" class="input-textarea" rows="4"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="app-footer">
+    <span>Autonomous Research Platform // Engineered with TypeScript, LangGraph.js, PostgreSQL Checkpointer & Google Gemini</span>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
