@@ -215,3 +215,28 @@ export class RateLimiter {
   }
 }
 
+export class CircuitBreakerRegistry {
+  private breakers = new Map<string, CircuitBreaker>();
+
+  getOrCreate(name: string, options?: CircuitBreakerOptions): CircuitBreaker {
+    let cb = this.breakers.get(name);
+    if (!cb) {
+      cb = new CircuitBreaker({ ...options, name });
+      this.breakers.set(name, cb);
+    }
+    return cb;
+  }
+
+  getAllMetrics() {
+    return Array.from(this.breakers.values()).map((b) => b.getMetrics());
+  }
+
+  resetAll(): void {
+    for (const breaker of this.breakers.values()) {
+      breaker.reset();
+    }
+  }
+}
+
+export const circuitBreakerRegistry = new CircuitBreakerRegistry();
+

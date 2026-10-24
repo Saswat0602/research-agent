@@ -13,6 +13,8 @@ function parseJsonSafe<T>(raw: string, fallback: T): T {
 }
 
 import { promptRegistry } from "../../prompts/registry.js";
+import { invokeModelWithResilience } from "../../config/model.js";
+import { getAppConfig } from "../../config/env.js";
 
 export async function reviewerNode(state: ResearchState): Promise<ResearchUpdate> {
   const model = createChatModel({ temperature: 0.1 });
@@ -25,11 +27,13 @@ export async function reviewerNode(state: ResearchState): Promise<ResearchUpdate
     state.iterationCount,
     evidenceSummary
   );
+  const config = getAppConfig();
 
-  const response = await model.invoke([
-    new SystemMessage(systemPrompt),
-    new HumanMessage(userPrompt),
-  ]);
+  const response = await invokeModelWithResilience(
+    model,
+    [new SystemMessage(systemPrompt), new HumanMessage(userPrompt)],
+    { providerName: config.MODEL_PROVIDER }
+  );
 
   const rawText = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
 
