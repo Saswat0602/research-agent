@@ -3,6 +3,8 @@ import { z } from "zod";
 import { EvidenceSource } from "../core/types.js";
 import { ToolExecutionError } from "../core/errors.js";
 
+import { validateUrlSecurity, sanitizeExternalText } from "./security.js";
+
 async function executeTavilySearch(apiKey: string, query: string): Promise<EvidenceSource[]> {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -23,12 +25,23 @@ async function executeTavilySearch(apiKey: string, query: string): Promise<Evide
     results?: Array<{ title: string; url: string; content: string }>;
   };
 
-  return (data.results ?? []).map((item) => ({
-    title: item.title,
-    url: item.url,
-    content: item.content,
-    query,
-  }));
+  const validatedSources: EvidenceSource[] = [];
+
+  for (const item of data.results ?? []) {
+    try {
+      validateUrlSecurity(item.url);
+      validatedSources.push({
+        title: item.title,
+        url: item.url,
+        content: sanitizeExternalText(item.content),
+        query,
+      });
+    } catch (err) {
+      console.warn(`[WebSearch] Excluded insecure result URL '${item.url}':`, err instanceof Error ? err.message : err);
+    }
+  }
+
+  return validatedSources;
 }
 
 function executeFallbackSearch(query: string): EvidenceSource[] {

@@ -9,7 +9,7 @@
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "serve": "tsx src/api/server.ts",
-    "test": "node --test"
+    "test": "node --import tsx --test 'tests/**/*.test.ts'"
   },
   "keywords": [
     "ai-agent",

@@ -2,6 +2,7 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { ResearchState, ResearchUpdate } from "../state.js";
 import { ResearchReport } from "../../core/types.js";
 import { createChatModel } from "../../config/model.js";
+import { verifyReportCitations } from "../../core/citation-verifier.js";
 
 function parseJsonSafe<T>(raw: string, fallback: T): T {
   try {
@@ -66,7 +67,7 @@ ${evidenceList || "No external evidence provided."}`;
 
   const parsed = parseJsonSafe<Partial<ResearchReport>>(rawText, fallback);
 
-  const finalReport: ResearchReport = {
+  const candidateReport: ResearchReport = {
     topic: parsed.topic || state.topic,
     summary: parsed.summary || fallback.summary,
     keyFindings: Array.isArray(parsed.keyFindings) && parsed.keyFindings.length > 0 ? parsed.keyFindings : fallback.keyFindings,
@@ -76,7 +77,13 @@ ${evidenceList || "No external evidence provided."}`;
     loopsUsed: state.iterationCount,
   };
 
+  const { verifiedReport, rejectedClaims } = verifyReportCitations(candidateReport, state.evidence);
+
+  if (rejectedClaims.length > 0) {
+    console.warn(`[CitationVerifier] Excluded ${rejectedClaims.length} unverified claims:`, rejectedClaims);
+  }
+
   return {
-    finalReport,
+    finalReport: verifiedReport,
   };
 }
