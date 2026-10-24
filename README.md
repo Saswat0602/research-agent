@@ -60,15 +60,14 @@ The platform adheres to **Hexagonal / Clean Architecture** and proven production
 
 ---
 
-## 💻 Web Command Center
+## 💻 Modern Next.js Web Command Center
 
-The platform features a modern, glassmorphism dark-theme Web Application served at `http://localhost:3001`:
+The platform includes a clean, professional, Perplexity/Linear-style Next.js web application:
 
-- **⚡ Autonomous Research Studio**: Enter research hypotheses, select models (Gemini, Ollama, Claude, OpenAI), set max iteration loops, and watch live graph state animations and SSE log streams.
-- **📚 Private Knowledge (RAG) Studio**: Ingest internal documents with automatic chunking and test retrieval relevance with live search queries.
-- **📊 Telemetry & Circuit Breakers**: Real-time inspection of token costs, session totals, and circuit breaker health statuses with one-click reset.
-- **🕒 Checkpoints & History**: Audit trail of prior research runs in PostgreSQL with one-click report reloading.
-- **✍️ Prompt Engineering Studio**: Dynamically customize persona instructions and evaluation criteria without server restarts.
+- **⚡ Deep Research Studio**: Formulate inquiries, choose model (`Gemini 3.5 Flash Lite`, `Ollama Qwen3 8B`, `Claude 3.5`, `OpenAI GPT-4o`), set max loops, and watch the clean 5-stage orchestration pipeline step in real time.
+- **📚 Private RAG Studio**: Ingest internal documents with automated sliding-window chunking and test retrieval relevance.
+- **🕒 Checkpoints & History**: Inspect historical PostgreSQL checkpoints and reload verified reports into view.
+- **📊 Telemetry & Circuit Breakers**: Live inspection of session tokens, costs (USD), and active circuit breaker states.
 
 ---
 
@@ -88,12 +87,18 @@ npx prisma db push
 ```bash
 npm test
 ```
-*Executes 33 comprehensive unit tests across 11 suites covering security, citation verification, resilience, job queue, RAG chunking, and graph routing in < 700ms.*
+*Executes 33 comprehensive unit tests across 11 suites in < 700ms.*
 
-### 3. Start the Web Command Center & API Server
+### 3. Start the Backend API Microservice (Port 3001)
 ```bash
 npm run serve
 ```
+
+### 4. Start the Modern Next.js Web Command Center (Port 3002)
+```bash
+npm run web:dev
+```
+Open **[http://localhost:3002](http://localhost:3002)** in your browser. All API requests are automatically proxied to port 3001 via Next.js rewrites.
 Open **[http://localhost:3001](http://localhost:3001)** in your browser.
 
 ---

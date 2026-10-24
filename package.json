@@ -9,6 +9,9 @@
     "start": "tsx src/index.ts",
     "dev": "tsx watch src/index.ts",
     "serve": "tsx src/api/server.ts",
+    "web:dev": "npm --prefix web run dev -- -p 3002",
+    "web:build": "npm --prefix web run build",
+    "web:start": "npm --prefix web run start -- -p 3002",
     "test": "node --import tsx --test 'tests/**/*.test.ts'"
   },
   "keywords": [
