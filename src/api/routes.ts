@@ -22,23 +22,67 @@ apiRouter.get("/health", (_req: Request, res: Response) => {
   });
 });
 
+import { promptRegistry } from "../prompts/registry.js";
+
 apiRouter.get("/models", (_req: Request, res: Response) => {
   const config = getAppConfig();
   res.json({
     activeProvider: config.MODEL_PROVIDER,
-    supportedProviders: ["ollama", "gemini", "google", "openai"],
-    ollama: {
-      baseUrl: config.OLLAMA_BASE_URL,
-      model: config.OLLAMA_MODEL,
-    },
+    supportedProviders: [
+      "gemini",
+      "google",
+      "ollama",
+      "openai",
+      "openrouter",
+      "claude",
+      "anthropic",
+      "bedrock",
+      "google-adk",
+    ],
     gemini: {
       model: config.GEMINI_MODEL || config.GOOGLE_MODEL,
       configured: Boolean(config.GEMINI_API_KEY || config.GOOGLE_API_KEY),
+    },
+    ollama: {
+      baseUrl: config.OLLAMA_BASE_URL,
+      model: config.OLLAMA_MODEL,
     },
     openai: {
       model: config.OPENAI_MODEL,
       configured: Boolean(config.OPENAI_API_KEY),
     },
+    openrouter: {
+      model: config.OPENROUTER_MODEL,
+      configured: Boolean(config.OPENROUTER_API_KEY || process.env.OPENROUTER_API_KEY),
+    },
+    claude: {
+      model: config.ANTHROPIC_MODEL,
+      configured: Boolean(config.ANTHROPIC_API_KEY || process.env.ANTHROPIC_API_KEY),
+    },
+  });
+});
+
+apiRouter.get("/prompts", (_req: Request, res: Response) => {
+  res.json({
+    success: true,
+    activeCustomizations: promptRegistry.getActiveCustomizations(),
+  });
+});
+
+apiRouter.post("/prompts/customize", (req: Request, res: Response) => {
+  const { plannerInstructions, reviewerCriteria, reportTone } = req.body as {
+    plannerInstructions?: string;
+    reviewerCriteria?: string;
+    reportTone?: string;
+  };
+
+  if (typeof plannerInstructions === "string") promptRegistry.setPlannerInstructions(plannerInstructions);
+  if (typeof reviewerCriteria === "string") promptRegistry.setReviewerCriteria(reviewerCriteria);
+  if (typeof reportTone === "string") promptRegistry.setReportTone(reportTone);
+
+  res.json({
+    success: true,
+    activeCustomizations: promptRegistry.getActiveCustomizations(),
   });
 });
 

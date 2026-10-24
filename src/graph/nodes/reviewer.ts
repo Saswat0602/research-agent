@@ -12,27 +12,19 @@ function parseJsonSafe<T>(raw: string, fallback: T): T {
   }
 }
 
+import { promptRegistry } from "../../prompts/registry.js";
+
 export async function reviewerNode(state: ResearchState): Promise<ResearchUpdate> {
   const model = createChatModel({ temperature: 0.1 });
   const evidenceSummary = state.evidence
     .map((e, idx) => `[Source ${idx + 1}] Title: ${e.title}\nURL: ${e.url}\nExcerpt: ${e.content}`)
     .join("\n\n");
 
-  const systemPrompt = `You are a critical research evaluator. Determine if the gathered evidence is sufficient to provide a detailed, accurate report on the research topic.
-Return ONLY valid JSON matching this schema:
-{
-  "isSufficient": true,
-  "missingInfo": [],
-  "nextQueries": [],
-  "confidenceScore": 0.9,
-  "evaluationNotes": "short review rationale"
-}
-If information is insufficient or missing key angles, set "isSufficient": false, list the missing points, and suggest 1-2 new targeted search queries.`;
-
-  const userPrompt = `Research Topic: ${state.topic}
-Current Iteration: ${state.iterationCount}
-Gathered Evidence:
-${evidenceSummary || "No evidence collected yet."}`;
+  const { systemPrompt, userPrompt } = promptRegistry.getReviewerPrompts(
+    state.topic,
+    state.iterationCount,
+    evidenceSummary
+  );
 
   const response = await model.invoke([
     new SystemMessage(systemPrompt),

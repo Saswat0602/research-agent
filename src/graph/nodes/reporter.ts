@@ -13,36 +13,15 @@ function parseJsonSafe<T>(raw: string, fallback: T): T {
   }
 }
 
+import { promptRegistry } from "../../prompts/registry.js";
+
 export async function reporterNode(state: ResearchState): Promise<ResearchUpdate> {
   const model = createChatModel({ temperature: 0.2 });
   const evidenceList = state.evidence
     .map((e, idx) => `[Source ${idx + 1}] Title: ${e.title}\nURL: ${e.url}\nContent: ${e.content}`)
     .join("\n\n");
 
-  const systemPrompt = `You are a principal research analyst. Produce an evidence-backed report based strictly on the provided sources.
-Return ONLY valid JSON matching this schema:
-{
-  "topic": "${state.topic.replace(/"/g, '\\"')}",
-  "summary": "comprehensive overview of the findings",
-  "keyFindings": [
-    {
-      "claim": "specific factual claim",
-      "sourceUrl": "url from evidence",
-      "evidenceSnippet": "direct quote or concise excerpt"
-    }
-  ],
-  "sources": [
-    {
-      "title": "source title",
-      "url": "source url"
-    }
-  ],
-  "conclusion": "strategic takeaway and outlook"
-}`;
-
-  const userPrompt = `Research Topic: ${state.topic}
-Collected Evidence:
-${evidenceList || "No external evidence provided."}`;
+  const { systemPrompt, userPrompt } = promptRegistry.getReporterPrompts(state.topic, evidenceList);
 
   const response = await model.invoke([
     new SystemMessage(systemPrompt),

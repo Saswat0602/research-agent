@@ -12,23 +12,17 @@ function parseJsonSafe<T>(raw: string, fallback: T): T {
   }
 }
 
+import { promptRegistry } from "../../prompts/registry.js";
+
 export async function plannerNode(state: ResearchState): Promise<ResearchUpdate> {
   const model = createChatModel({ temperature: 0.1 });
   const topic = state.topic;
 
-  const systemPrompt = `You are an expert research planner. Given a user topic, formulate a structured research plan.
-Return ONLY valid JSON matching this schema:
-{
-  "topic": "${topic.replace(/"/g, '\\"')}",
-  "initialQueries": ["query1", "query2"],
-  "focusAreas": ["area1", "area2"],
-  "needsExternalSearch": true,
-  "rationale": "short explanation of research strategy"
-}`;
+  const { systemPrompt, userPrompt } = promptRegistry.getPlannerPrompts(topic);
 
   const response = await model.invoke([
     new SystemMessage(systemPrompt),
-    new HumanMessage(`Research Topic: ${topic}`),
+    new HumanMessage(userPrompt),
   ]);
 
   const rawText = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
