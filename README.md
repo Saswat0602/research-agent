@@ -1,91 +1,132 @@
-# Autonomous Research Agent Platform
+# REVIEWSAGE AI // Autonomous Deep Research Agent Platform
 
-> An enterprise-grade, state-driven research agent platform designed to investigate complex questions, gather live web evidence, verify citations, and track activity & token usage in PostgreSQL.
-
----
-
-## 🌟 What Is This Project? (For Everyone)
-
-Have you ever asked an AI a question, only to get an outdated answer, a made-up link, or a vague guess? 
-
-This project solves that. Instead of a single model prompt guessing an answer, this system operates like a **team of meticulous human researchers**:
-
-1. 🎯 **The Planner**: Takes your topic, analyzes what information is needed, and formulates specific search queries.
-2. 🔍 **The Searcher**: Queries the live web, fetches verified documentation, and collects evidence.
-3. 🧐 **The Reviewer**: Evaluates the gathered evidence. If something is missing or unclear, it orders a targeted follow-up search (up to a safe loop limit).
-4. 📝 **The Reporter**: Synthesizes a structured, evidence-backed report where **every factual claim links directly to its source URL**.
-5. 💾 **The Historian (Database & Telemetry)**: Automatically saves the entire research session, the collected sources, node execution times, and exact token costs into **PostgreSQL** with fast **Redis** search caching.
+> An enterprise-grade, state-driven multi-agent research platform designed to investigate complex inquiries, gather live web evidence, query private RAG knowledge, deterministically verify citations, and track execution telemetry with durable PostgreSQL checkpoints.
 
 ---
 
-## 🏗️ Architecture & Data Modeling
+## 🌟 What Is This Platform?
 
-The platform uses **LangGraph** for cyclical execution, **Prisma ORM** with **PostgreSQL** for durable persistence, and **Redis** for search caching.
+Instead of relying on a single LLM prompt that may hallucinate links, invent facts, or miss critical nuance, this platform operates as a **coordinated multi-agent pipeline** built on **LangGraph.js**, **Google Gemini**, and local **Ollama**:
 
-### 1. Data Schema
-- `research_sessions`: Session metadata, topic, model provider, duration, confidence score, error states.
-- `research_plans`: Formulated queries, focus angles, and strategy rationale.
-- `evidence_sources`: Canonical source URL, content snippet, query origin, and iteration index.
-- `review_assessments`: Sufficiency decision, confidence score, detected missing information, and follow-up queries.
-- `research_reports`: Executive summary, conclusion, and relation to itemized findings.
-- `report_findings`: Sourced claims linked directly to evidence sources and verified URLs.
-- `agent_activity_logs`: Chronological audit trail per node with input/output payloads and latency.
-- `token_usage_logs`: Exact prompt tokens, completion tokens, total tokens, and USD cost calculation.
-
-### 2. Multi-Model Support
-- **Google Gemini**: Uses `gemini-3.5-flash-lite` or `gemini-3.5-flash` with Google Gen AI SDK.
-- **Local Ollama**: Offline private execution using local `qwen3:8b`.
-- **OpenAI**: Optional cloud fallback.
+1. 🎯 **The Planner Node**: Formulates deep search hypotheses, focus areas, and targeted queries.
+2. 🔎 **The Hybrid Searcher Node**: Queries live web sources (with SSRF protection) and internal private knowledge documents (with overlapping chunking and relevance ranking).
+3. ⚖️ **The Reviewer Node**: Evaluates evidence sufficiency, detects gaps, and conditionally orders follow-up search loops (up to a bounded limit).
+4. 🛡️ **The Deterministic Citation Gate**: A non-LLM ground-truth validator that strictly verifies every claim URL against collected evidence and checks excerpt containment. Fabricated claims and phantom links are purged before report synthesis.
+5. 📄 **The Reporter Node**: Synthesizes a structured executive report with verifiable citation badges.
+6. 💾 **Durable State & Observability**: Every step is checkpointed into **PostgreSQL** (`@langchain/langgraph-checkpoint-postgres`), cached in **Redis**, and tracked with exact prompt/completion token logs and cost accounting.
 
 ---
 
-## 🚀 Quick Start in 3 Steps
+## 🏗️ Architecture & Engineering Patterns
 
-### 1. Ensure Services are Running
-```bash
-# If using the included compose file:
-docker compose up -d
+The platform adheres to **Hexagonal / Clean Architecture** and proven production engineering patterns:
 
-# Or verify running Postgres & Redis:
-docker ps
+```
+                      ┌────────────────────────────────────────┐
+                      │    Web Command Center & REST API       │
+                      │       (http://localhost:3001)          │
+                      └──────────────────┬─────────────────────┘
+                                         │
+                 ┌───────────────────────▼────────────────────────┐
+                 │       Application & Orchestration Layer        │
+                 │   - ResearchService (Use Case Orchestrator)    │
+                 │   - ResearchJobQueue (Async Event Dispatcher)  │
+                 │   - PromptRegistry (Dynamic Persona Studio)    │
+                 └───────────────────────┬────────────────────────┘
+                                         │
+        ┌────────────────────────────────┼────────────────────────────────┐
+        │                                │                                │
+ ┌──────▼───────┐               ┌────────▼────────┐              ┌────────▼───────┐
+ │ LangGraph.js │               │ Resilient LLM   │              │   Retrieval    │
+ │ State Machine│               │ Provider Router │              │   & Security   │
+ │ (Checkpointed│               │ (Circuit Breaker│              │ (SSRF Shield + │
+ │  in Postgres)│               │  + Fallback)    │              │  Private RAG)  │
+ └──────┬───────┘               └────────┬────────┘              └────────┬───────┘
+        │                                │                                │
+ ┌──────▼────────────────────────────────▼────────────────────────────────▼───────┐
+ │                         Infrastructure & Storage                               │
+ │   - PostgreSQL (Checkpoints, Sessions, Activity Logs, Token Accounting)        │
+ │   - Redis (Query Caching & SSE Event Streams)                                  │
+ │   - LLMs: Gemini 3.5 Flash Lite, Ollama Qwen3:8b, Claude 3.5, OpenAI GPT-4o   │
+ └────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Install & Push Schema
+### Key Production Patterns:
+- **Chain of Responsibility / Provider Fallback**: If the primary LLM (e.g. Gemini) encounters a rate limit (429) or transient error, the gateway automatically falls back to an alternate provider (e.g. local Ollama or Claude).
+- **Circuit Breaker Pattern**: `CircuitBreaker` (`CLOSED` $\rightarrow$ `OPEN` $\rightarrow$ `HALF_OPEN`) prevents cascade failures on downstream LLM APIs and external search engines.
+- **Deterministic Citation Verification**: Zero-hallucination guarantee through non-LLM substring search and URL domain validation.
+- **RAG Chunking & Relevance Scoring**: Documents are split into overlapping character chunks with term frequency and title bonus scoring.
+- **SSRF Defense**: Strict IP subnet filter blocking loopback, cloud metadata (`169.254.169.254`, `metadata.google.internal`), and RFC 1918 private ranges.
+
+---
+
+## 💻 Web Command Center
+
+The platform features a modern, glassmorphism dark-theme Web Application served at `http://localhost:3001`:
+
+- **⚡ Autonomous Research Studio**: Enter research hypotheses, select models (Gemini, Ollama, Claude, OpenAI), set max iteration loops, and watch live graph state animations and SSE log streams.
+- **📚 Private Knowledge (RAG) Studio**: Ingest internal documents with automatic chunking and test retrieval relevance with live search queries.
+- **📊 Telemetry & Circuit Breakers**: Real-time inspection of token costs, session totals, and circuit breaker health statuses with one-click reset.
+- **🕒 Checkpoints & History**: Audit trail of prior research runs in PostgreSQL with one-click report reloading.
+- **✍️ Prompt Engineering Studio**: Dynamically customize persona instructions and evaluation criteria without server restarts.
+
+---
+
+## 🚀 Quick Start
+
+### 1. Ensure Dependencies & Database are Ready
 ```bash
+# Verify running Postgres & Redis (port 5432 and 6379)
+docker ps
+
+# Install dependencies and sync Prisma schema
 npm install
 npx prisma db push
 ```
 
-### 3. Run a Research Query
+### 2. Run the Automated Unit Test Suite
 ```bash
-npm start
+npm test
 ```
+*Executes 33 comprehensive unit tests across 11 suites covering security, citation verification, resilience, job queue, RAG chunking, and graph routing in < 700ms.*
 
----
-
-## 📡 Microservice Endpoints
-
-Start the API server:
+### 3. Start the Web Command Center & API Server
 ```bash
 npm run serve
 ```
-The server runs on `http://localhost:3001`.
-
-- `GET /health`: Health and provider configuration.
-- `GET /api/v1/models`: Active model provider status.
-- `POST /api/v1/research`: Run a research task and return structured JSON.
-- `POST /api/v1/research/stream`: Real-time Server-Sent Events (SSE) streaming progress.
-- `GET /api/v1/sessions`: List historical research sessions.
-- `GET /api/v1/sessions/:id`: Inspect full session data (report, sources, activity logs, token logs).
-- `GET /api/v1/metrics`: Aggregated token usage and cost metrics.
+Open **[http://localhost:3001](http://localhost:3001)** in your browser.
 
 ---
 
-## 📊 Visual Database Explorer (Adminer)
+## 📡 REST API & SSE Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/health` | Service health, active provider, and timestamp |
+| `GET` | `/models` | Available LLM providers and configuration status |
+| `POST` | `/api/v1/research` | Synchronous research execution returning JSON report |
+| `GET/POST`| `/api/v1/research/stream` | Server-Sent Events (SSE) live progress stream |
+| `POST` | `/api/v1/jobs` | Asynchronous background research dispatch |
+| `GET` | `/api/v1/jobs/:id` | Status of asynchronous job |
+| `GET` | `/api/v1/jobs/:id/events` | SSE event stream for specific background job |
+| `GET` | `/api/v1/knowledge` | List indexed internal RAG documents |
+| `POST` | `/api/v1/knowledge` | Ingest internal technical document |
+| `GET` | `/api/v1/knowledge/search` | Test RAG search relevance against private KB |
+| `GET` | `/api/v1/telemetry/overview` | Aggregated session counts, tokens, and cost |
+| `GET` | `/api/v1/telemetry/circuit-breakers` | Inspection of resilience circuit breakers |
+| `POST`| `/api/v1/telemetry/circuit-breakers/reset` | Reset all circuit breakers to CLOSED |
+| `GET` | `/api/v1/prompts` | Read system prompt personas |
+| `POST` | `/api/v1/prompts/customize` | Dynamically override agent prompts |
+| `GET` | `/api/v1/sessions` | List historical research sessions |
+| `GET` | `/api/v1/sessions/:id` | Full session audit trail with activity logs & token usage |
+
+---
+
+## 📊 Database Explorer (Adminer)
 
 - **URL**: [http://localhost:8080](http://localhost:8080)
 - **System**: PostgreSQL
-- **Server**: `postgres` (or `localhost`)
+- **Server**: `localhost` (or `postgres` if inside docker network)
 - **Username**: `postgres`
 - **Password**: `postgres`
 - **Database**: `research_agent`
