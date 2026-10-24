@@ -1,0 +1,150 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SessionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+model ResearchSession {
+  id              String            @id @default(uuid())
+  topic           String
+  modelProvider   String            @default("gemini")
+  modelName       String            @default("gemini-3.5-flash-lite")
+  status          SessionStatus     @default(PENDING)
+  maxIterations   Int               @default(3)
+  loopsUsed       Int               @default(0)
+  confidenceScore Float?
+  error           String?
+  startedAt       DateTime          @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  plan            ResearchPlan?
+  report          ResearchReport?
+  evidence        EvidenceSource[]
+  reviews         ReviewAssessment[]
+  activityLogs    AgentActivityLog[]
+  tokenLogs       TokenUsageLog[]
+
+  @@map("research_sessions")
+}
+
+model ResearchPlan {
+  id                  String          @id @default(uuid())
+  sessionId           String          @unique
+  session             ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  initialQueries      String[]
+  focusAreas          String[]
+  needsExternalSearch Boolean         @default(true)
+  rationale           String?
+  createdAt           DateTime        @default(now())
+
+  @@map("research_plans")
+}
+
+model EvidenceSource {
+  id              String          @id @default(uuid())
+  sessionId       String
+  session         ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  title           String
+  url             String
+  contentSnippet  String          @db.Text
+  query           String?
+  loopIteration   Int             @default(1)
+  createdAt       DateTime        @default(now())
+
+  findings        ReportFinding[]
+
+  @@map("evidence_sources")
+}
+
+model ReviewAssessment {
+  id              String          @id @default(uuid())
+  sessionId       String
+  session         ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  iterationNumber Int
+  isSufficient    Boolean
+  confidenceScore Float
+  missingInfo     String[]
+  nextQueries     String[]
+  evaluationNotes String?         @db.Text
+  createdAt       DateTime        @default(now())
+
+  @@map("review_assessments")
+}
+
+model ResearchReport {
+  id              String          @id @default(uuid())
+  sessionId       String          @unique
+  session             ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  topic           String
+  summary         String          @db.Text
+  conclusion      String          @db.Text
+  loopsUsed       Int
+  createdAt       DateTime        @default(now())
+
+  findings        ReportFinding[]
+
+  @@map("research_reports")
+}
+
+model ReportFinding {
+  id              String          @id @default(uuid())
+  reportId        String
+  report          ResearchReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  evidenceId      String?
+  evidence        EvidenceSource? @relation(fields: [evidenceId], references: [id], onDelete: SetNull)
+  claim           String          @db.Text
+  sourceUrl       String
+  evidenceSnippet String          @db.Text
+  createdAt       DateTime        @default(now())
+
+  @@map("report_findings")
+}
+
+model AgentActivityLog {
+  id              String          @id @default(uuid())
+  sessionId       String
+  session         ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nodeName        String
+  eventType       String
+  iteration       Int             @default(0)
+  inputPayload    Json?
+  outputPayload   Json?
+  latencyMs       Int?
+  errorDetails    String?         @db.Text
+  timestamp       DateTime        @default(now())
+
+  @@index([sessionId, nodeName])
+  @@index([timestamp])
+  @@map("agent_activity_logs")
+}
+
+model TokenUsageLog {
+  id                String          @id @default(uuid())
+  sessionId         String
+  session           ResearchSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  nodeName          String
+  modelProvider     String
+  modelName         String
+  promptTokens      Int             @default(0)
+  completionTokens  Int             @default(0)
+  totalTokens       Int             @default(0)
+  estimatedCostUsd  Float?
+  latencyMs         Int?
+  timestamp         DateTime        @default(now())
+
+  @@index([sessionId])
+  @@index([modelProvider, modelName])
+  @@map("token_usage_logs")
+}
