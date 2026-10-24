@@ -1,4 +1,4 @@
-import { researchGraph } from "../graph/research-graph.js";
+import { getResearchGraph } from "../graph/research-graph.js";
 import { ResearchReport, ResearchPlan, ReviewAssessment, EvidenceSource } from "../core/types.js";
 import { ValidationError } from "../core/errors.js";
 import { getAppConfig } from "../config/env.js";
@@ -57,7 +57,8 @@ export class ResearchService {
     const sessionStartTime = Date.now();
 
     try {
-      const stream = await researchGraph.stream(
+      const graph = await getResearchGraph();
+      const stream = await graph.stream(
         {
           topic: topic.trim(),
           maxIterations,
@@ -65,7 +66,10 @@ export class ResearchService {
           evidence: [],
           messages: [],
         },
-        { streamMode: "updates" }
+        {
+          streamMode: "updates",
+          configurable: { thread_id: sessionId },
+        }
       );
 
       for await (const chunk of stream) {

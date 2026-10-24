@@ -19,6 +19,7 @@ model ResearchSession {
   topic           String
   modelProvider   String            @default("gemini")
   modelName       String            @default("gemini-3.5-flash-lite")
+  threadId        String?           @unique
   status          SessionStatus     @default(PENDING)
   maxIterations   Int               @default(3)
   loopsUsed       Int               @default(0)
@@ -148,3 +149,44 @@ model TokenUsageLog {
   @@index([modelProvider, modelName])
   @@map("token_usage_logs")
 }
+
+model KnowledgeDocument {
+  id        String   @id @default(uuid())
+  title     String
+  sourceUrl String?
+  content   String   @db.Text
+  tags      String[]
+  metadata  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("knowledge_documents")
+}
+
+model WorkflowCheckpoint {
+  threadId           String
+  checkpointNs       String   @default("")
+  checkpointId       String
+  parentCheckpointId String?
+  checkpoint         Json
+  metadata           Json?
+  createdAt          DateTime @default(now())
+
+  @@id([threadId, checkpointNs, checkpointId])
+  @@map("workflow_checkpoints")
+}
+
+model WorkflowCheckpointWrite {
+  threadId     String
+  checkpointNs String   @default("")
+  checkpointId String
+  taskId       String
+  idx          Int
+  channel      String
+  value        Json
+  createdAt    DateTime @default(now())
+
+  @@id([threadId, checkpointNs, checkpointId, taskId, idx])
+  @@map("workflow_checkpoint_writes")
+}
+

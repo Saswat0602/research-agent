@@ -1,9 +1,11 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { researchService } from "../services/research.service.js";
-import { researchGraph } from "../graph/research-graph.js";
+import { getResearchGraph } from "../graph/research-graph.js";
 import { getAppConfig } from "../config/env.js";
 import { sessionRepository } from "../db/session.repository.js";
 import { prisma } from "../db/client.js";
+import { knowledgeRetriever } from "../retrieval/retriever.js";
+import { researchJobQueue } from "../jobs/research-queue.js";
 
 export const apiRouter = Router();
 
@@ -190,5 +192,125 @@ apiRouter.get("/metrics", async (_req: Request, res: Response, next: NextFunctio
   } catch (error) {
     next(error);
   }
+});
+
+// Knowledge Base (Private RAG) Endpoints
+apiRouter.post("/knowledge", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { title, content, sourceUrl, tags, metadata } = req.body as {
+      title?: string;
+      content?: string;
+      sourceUrl?: string;
+      tags?: string[];
+      metadata?: Record<string, unknown>;
+    };
+
+    if (!title || !content) {
+      res.status(400).json({ error: "Title and content are required" });
+      return;
+    }
+
+    const doc = await knowledgeRetriever.ingestDocument({
+      title,
+      content,
+      sourceUrl,
+      tags,
+      metadata,
+    });
+
+    res.status(201).json({ success: true, document: doc });
+  } catch (error) {
+    next(error);
+  }
+});
+
+apiRouter.get("/knowledge", async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const documents = await knowledgeRetriever.listDocuments();
+    res.json({ success: true, count: documents.length, documents });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Asynchronous Job Queue Endpoints
+apiRouter.post("/jobs", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { topic, maxIterations } = req.body as { topic?: string; maxIterations?: number };
+    if (!topic || typeof topic !== "string") {
+      res.status(400).json({ error: "Missing or invalid 'topic' in request body" });
+      return;
+    }
+
+    const job = await researchJobQueue.enqueue(topic, { maxIterations });
+    res.status(202).json({
+      success: true,
+      message: "Research job queued successfully",
+      jobId: job.id,
+      status: job.status,
+      links: {
+        status: `/api/v1/jobs/${job.id}`,
+        events: `/api/v1/jobs/${job.id}/events`,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+apiRouter.get("/jobs/:id", (req: Request, res: Response) => {
+  const jobId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const job = researchJobQueue.getJob(jobId);
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+  res.json({ success: true, job });
+});
+
+apiRouter.get("/jobs/:id/events", (req: Request, res: Response) => {
+  const jobId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const job = researchJobQueue.getJob(jobId);
+
+  if (!job) {
+    res.status(404).json({ error: "Job not found" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  const sendEvent = (event: string, data: unknown) => {
+    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  sendEvent("job_status", { jobId, status: job.status });
+
+  if (job.status === "COMPLETED") {
+    sendEvent("completed", { sessionId: job.sessionId, report: job.report });
+    res.end();
+    return;
+  }
+
+  if (job.status === "FAILED") {
+    sendEvent("failed", { error: job.error });
+    res.end();
+    return;
+  }
+
+  const listener = (data: unknown) => {
+    sendEvent("update", data);
+    if (data && typeof data === "object" && "type" in data && (data.type === "completed" || data.type === "failed")) {
+      researchJobQueue.off(`job:${jobId}`, listener);
+      res.end();
+    }
+  };
+
+  researchJobQueue.on(`job:${jobId}`, listener);
+
+  req.on("close", () => {
+    researchJobQueue.off(`job:${jobId}`, listener);
+  });
 });
 

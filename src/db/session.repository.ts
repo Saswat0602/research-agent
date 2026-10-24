@@ -8,6 +8,7 @@ export class SessionRepository {
     modelProvider: string;
     modelName: string;
     maxIterations: number;
+    threadId?: string;
   }) {
     return prisma.researchSession.create({
       data: {
@@ -15,6 +16,7 @@ export class SessionRepository {
         modelProvider: data.modelProvider,
         modelName: data.modelName,
         maxIterations: data.maxIterations,
+        threadId: data.threadId,
         status: SessionStatus.RUNNING,
       },
     });
